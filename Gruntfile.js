@@ -10,12 +10,20 @@
 module.exports = function (grunt) {
 	
 	var modRewrite = require('connect-modrewrite');
+  var requirejsconfig = grunt.file.readJSON('./require-build-config.js');
+  var compression = require('compression');
+
 
   // Load grunt tasks automatically
   require('load-grunt-tasks')(grunt);
 
   // Time how long tasks take. Can help when optimizing build times
   require('time-grunt')(grunt);
+
+  //var SERVICE_URL = require('url').parse('https://ztb-qa2.elasticbeanstalk.com/');
+  //var SERVICE_URL = require('url').parse(process.env.SERVICE_URL || 'http://localhost:8080/');
+  
+  var SERVICE_URL = require('url').parse("https://staging1.xpressbuy.it/");
 
   // Configurable paths for the application
   var appConfig = {
@@ -36,7 +44,7 @@ module.exports = function (grunt) {
         tasks: ['wiredep']
       },*/
       js: {
-        files: ['<%= yeoman.app %>/scripts/{,*/}*.js'],
+        files: ['<%= yeoman.app %>/*{,*/}*.js'],
         tasks: ['newer:jshint:all'],
         options: {
           livereload: '<%= connect.options.livereload %>'
@@ -47,7 +55,7 @@ module.exports = function (grunt) {
         tasks: ['newer:jshint:test', 'karma']
       },
       styles: {
-        files: ['<%= yeoman.app %>/styles/{,*/}*.css'],
+        files: ['<%= yeoman.app %>/*{,*/}*.css'],
         tasks: ['newer:copy:styles', 'autoprefixer']
       },
       gruntfile: {
@@ -58,9 +66,9 @@ module.exports = function (grunt) {
           livereload: '<%= connect.options.livereload %>'
         },
         files: [
-          '<%= yeoman.app %>/{,*/}*.html',
-          '.tmp/styles/{,*/}*.css',
-          '<%= yeoman.app %>/images/{,*/}*.{png,jpg,jpeg,gif,webp,svg}',
+          '<%= yeoman.app %>/*{,*/}*.html',
+          '.tmp/*{,*/}*.css',
+          '<%= yeoman.app %>/{,*/}*.{png,jpg,jpeg,gif,webp,svg}',
           'app.js'
         ]
       }
@@ -71,24 +79,55 @@ module.exports = function (grunt) {
       options: {
         port: 9000,
         // Change this to '0.0.0.0' to access the server from outside.
-        hostname: '0.0.0.0',
+        hostname: process.env.NEW_UI_HOST || 'localhost',
         livereload: 35729
+      },
+      server: {
+        proxies: [
+          {
+            context: ['/ztb'],
+            host: SERVICE_URL.hostname,
+            port: (SERVICE_URL.port) ? SERVICE_URL.port : (SERVICE_URL.protocol === 'https:') ? 443 : 80,
+            https: (SERVICE_URL.protocol === 'https:'),
+
+            changeOrigin: true,
+            xforward: false
+          }
+        ]
       },
       livereload: {
         options: {
-          open: true,
+          open: 'http://' + process.env.NEW_UI_HOST + ':9000/#deal?cid=646216369&domain=verizonwireless.com&br_id=30',
           middleware: function (connect) {
             return [
-              modRewrite([ '!/api|/assets|\\.png|\\.jpeg|\\.gif|\\.html|\\.js|\\.css|\\woff|\\ttf|\\swf$ /index.html' ]),
+              modRewrite([ '!/ztb|/assets|\\.png|\\.jpeg|\\.jpg|\\.gif|\\.html|\\.js|\\.css|\\woff|\\ttf|\\swf$ /index.html' ]),
               connect.static('.tmp'),
               connect().use(
                 '/bower_components',
                 connect.static('./bower_components')
               ),
-              connect.static(appConfig.app)
+              compression(),
+              connect.static(appConfig.app),
+              
+              
+              // Setup the proxy
+              require('grunt-connect-proxy/lib/utils').proxyRequest
+
+              
             ];
           }
-        }
+        },
+        proxies: [
+          {
+            context: ['/ztb'],
+            host: SERVICE_URL.hostname,
+            port: (SERVICE_URL.port) ? SERVICE_URL.port : (SERVICE_URL.protocol === 'https:') ? 443 : 80,
+            https: (SERVICE_URL.protocol === 'https:'),
+
+            changeOrigin: true,
+            xforward: false
+          }
+        ]
       },
       test: {
         options: {
@@ -122,7 +161,7 @@ module.exports = function (grunt) {
       },
       all: {
         src: [
-          'Gruntfile.js',
+          /*'Gruntfile.js',*/
           '<%= yeoman.app %>/scripts/{,*/}*.js'
         ]
       },
@@ -146,7 +185,9 @@ module.exports = function (grunt) {
           ]
         }]
       },
-      server: '.tmp'
+      server: '.tmp',
+      deploy : 'deploy',
+      built : 'app/built'
     },
 
     // Add vendor prefixed styles
@@ -167,7 +208,7 @@ module.exports = function (grunt) {
     // Automatically inject Bower components into the app
     wiredep: {
       options: {
-        cwd: '<%= yeoman.app %>'
+        /*cwd: '<%= yeoman.app %>'*/
       },
       app: {
         src: ['<%= yeoman.app %>/index.html'],
@@ -249,6 +290,14 @@ module.exports = function (grunt) {
           src: '{,*/}*.{png,jpg,jpeg,gif}',
           dest: '<%= yeoman.dist %>/images'
         }]
+      },
+      deploy : {
+        files: [{
+          expand: true,
+          cwd: '<%= yeoman.app %>',
+          src: '{,*/}*.{png,jpg,jpeg,gif}',
+          dest: '<%= yeoman.dist %>/built/'
+        }]
       }
     },
 
@@ -274,9 +323,9 @@ module.exports = function (grunt) {
         },
         files: [{
           expand: true,
-          cwd: '<%= yeoman.dist %>',
-          src: ['*.html', 'views/{,*/}*.html'],
-          dest: '<%= yeoman.dist %>'
+          cwd: 'app/built',
+          src: ['*/**/*.html', 'views/{,*/}*.html', 'index.html'],
+          dest: 'app/built'
         }]
       }
     },
@@ -301,9 +350,50 @@ module.exports = function (grunt) {
         html: ['<%= yeoman.dist %>/*.html']
       }
     },
-
+    compress : {
+      zip : {
+        options : {
+          archive : 'deploy/deployable.zip'
+        }, 
+        files : [
+          { expand: true, cwd: 'deploy/', src: ['**/*']}
+        ]
+      }
+    },
     // Copies remaining files to places other tasks can use
     copy: {
+      deploy : {
+        files : [{
+          expand: true,
+          dot: true,
+          cwd: 'app/built',
+          dest: 'deploy',
+          src: [
+            '*/**/*', '*'
+          ]
+        },
+        {
+          expand: true,
+          dot: true,
+          cwd: 'bower_components',
+          dest: 'deploy/bower_components',
+          src: [
+            '*/**/*'
+          ]
+        }]
+      },
+      built : {
+        files : [
+        {
+          expand: true,
+          dot: true,
+          cwd: 'bower_components',
+          dest: 'app/built/bower_components',
+          src: [
+            '*/**/*'
+          ]
+        }]
+      },
       dist: {
         files: [{
           expand: true,
@@ -336,6 +426,7 @@ module.exports = function (grunt) {
         dest: '.tmp/styles/',
         src: '{,*/}*.css'
       }
+
     },
 
     // Run some tasks in parallel to speed up the build process
@@ -359,6 +450,11 @@ module.exports = function (grunt) {
         configFile: 'test/karma.conf.js',
         singleRun: true
       }
+    },
+    requirejs : {
+      compile : {
+        options : requirejsconfig 
+      } 
     }
   });
 
@@ -370,9 +466,10 @@ module.exports = function (grunt) {
 
     grunt.task.run([
       'clean:server',
-      'wiredep',
-      'concurrent:server',
-      'autoprefixer',
+      /*'wiredep',*/
+     /* 'concurrent:server',*/
+     /* 'autoprefixer',*/
+      'configureProxies:server',
       'connect:livereload',
       'watch'
     ]);
@@ -393,18 +490,18 @@ module.exports = function (grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
-    'wiredep',
-    'useminPrepare',
+    /*'wiredep',*/
+    /*'useminPrepare',*/
     'concurrent:dist',
     'autoprefixer',
-    'concat',
+    /*'concat',*/
     'ngmin',
     'copy:dist',
     'cdnify',
-    'cssmin',
-    'uglify',
+    /*'cssmin',*/
+    /*'uglify',*/
     'filerev',
-    'usemin',
+    /*'usemin',*/
     'htmlmin'
   ]);
 
@@ -413,4 +510,13 @@ module.exports = function (grunt) {
     'test',
     'build'
   ]);
+
+  grunt.registerTask('noop', [
+  ]);
+
+
+  grunt.registerTask('build-require', ['clean:built' , 'requirejs']);
+
+  grunt.registerTask('deployable', ['clean:deploy','build-require', 'imagemin:deploy', 'copy:deploy', 'compress:zip']);
+
 };
