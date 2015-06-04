@@ -80,7 +80,7 @@ module.exports = function (grunt) {
       },
       livereload: {
         options: {
-          open: 'http://' + "localhost" + ':9000/#deal?cid=646216369&domain=verizonwireless.com&br_id=30',
+          open: 'http://' + "localhost" + ':9000/',
           middleware: function (connect) {
             return [
               modRewrite([ '!/assets|\\.png|\\.jpeg|\\.jpg|\\.gif|\\.html|\\.js|\\.css|\\woff|\\ttf|\\swf$ /index.html' ]),

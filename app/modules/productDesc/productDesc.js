@@ -5,7 +5,7 @@ define(function (require) {
 
   var productDesc = angular.module('productDesc', []);
   productDesc.controller('productDescCtrl', function ($scope, $compile, $templateCache) {
-  	$scope.product = "Prathamesh ka Phone";
+  	$scope.product = "Product name here";
   });
   productDesc.run(function($templateCache) {
      $templateCache.put('productDesc.html', html);

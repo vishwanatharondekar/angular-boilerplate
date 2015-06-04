@@ -1,0 +1,13 @@
+.prod-desc{
+  height : 400px;
+  background: gray;
+}
+
+.prod-details{
+  height  : 200px;
+  background: cyan;
+}
+.prod-selection{
+  height:600px;
+  background: rgb(77, 144, 254);
+}
