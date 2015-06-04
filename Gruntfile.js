@@ -8,7 +8,7 @@
 // 'test/spec/**/*.js'
 
 module.exports = function (grunt) {
-	
+
 	var modRewrite = require('connect-modrewrite');
   var requirejsconfig = grunt.file.readJSON('./require-build-config.js');
   var compression = require('compression');
@@ -20,10 +20,6 @@ module.exports = function (grunt) {
   // Time how long tasks take. Can help when optimizing build times
   require('time-grunt')(grunt);
 
-  //var SERVICE_URL = require('url').parse('https://ztb-qa2.elasticbeanstalk.com/');
-  //var SERVICE_URL = require('url').parse(process.env.SERVICE_URL || 'http://localhost:8080/');
-  
-  var SERVICE_URL = require('url').parse("https://staging1.xpressbuy.it/");
 
   // Configurable paths for the application
   var appConfig = {
@@ -79,55 +75,25 @@ module.exports = function (grunt) {
       options: {
         port: 9000,
         // Change this to '0.0.0.0' to access the server from outside.
-        hostname: process.env.NEW_UI_HOST || 'localhost',
+        hostname: 'localhost',
         livereload: 35729
-      },
-      server: {
-        proxies: [
-          {
-            context: ['/ztb'],
-            host: SERVICE_URL.hostname,
-            port: (SERVICE_URL.port) ? SERVICE_URL.port : (SERVICE_URL.protocol === 'https:') ? 443 : 80,
-            https: (SERVICE_URL.protocol === 'https:'),
-
-            changeOrigin: true,
-            xforward: false
-          }
-        ]
       },
       livereload: {
         options: {
-          open: 'http://' + process.env.NEW_UI_HOST + ':9000/#deal?cid=646216369&domain=verizonwireless.com&br_id=30',
+          open: 'http://' + "localhost" + ':9000/#deal?cid=646216369&domain=verizonwireless.com&br_id=30',
           middleware: function (connect) {
             return [
-              modRewrite([ '!/ztb|/assets|\\.png|\\.jpeg|\\.jpg|\\.gif|\\.html|\\.js|\\.css|\\woff|\\ttf|\\swf$ /index.html' ]),
+              modRewrite([ '!/assets|\\.png|\\.jpeg|\\.jpg|\\.gif|\\.html|\\.js|\\.css|\\woff|\\ttf|\\swf$ /index.html' ]),
               connect.static('.tmp'),
               connect().use(
                 '/bower_components',
                 connect.static('./bower_components')
               ),
-              compression(),
-              connect.static(appConfig.app),
-              
-              
-              // Setup the proxy
-              require('grunt-connect-proxy/lib/utils').proxyRequest
-
-              
+              //compression(),
+              connect.static(appConfig.app)
             ];
           }
-        },
-        proxies: [
-          {
-            context: ['/ztb'],
-            host: SERVICE_URL.hostname,
-            port: (SERVICE_URL.port) ? SERVICE_URL.port : (SERVICE_URL.protocol === 'https:') ? 443 : 80,
-            https: (SERVICE_URL.protocol === 'https:'),
-
-            changeOrigin: true,
-            xforward: false
-          }
-        ]
+        }
       },
       test: {
         options: {
@@ -354,7 +320,7 @@ module.exports = function (grunt) {
       zip : {
         options : {
           archive : 'deploy/deployable.zip'
-        }, 
+        },
         files : [
           { expand: true, cwd: 'deploy/', src: ['**/*']}
         ]
@@ -453,8 +419,8 @@ module.exports = function (grunt) {
     },
     requirejs : {
       compile : {
-        options : requirejsconfig 
-      } 
+        options : requirejsconfig
+      }
     }
   });
 
